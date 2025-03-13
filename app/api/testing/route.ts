@@ -1,4 +1,4 @@
-import sequelize from "@/lib/sequelize";
+import { Shipment } from "@/models/shipment-model";
 import { NextResponse } from "next/server";
 
 export async function POST(request: Request) {
@@ -12,7 +12,8 @@ export async function POST(request: Request) {
 
   const body = await request.json();
   try {
-    await sequelize.authenticate();
+    const shipments = await Shipment.findAll();
+    NextResponse.json(shipments, { status: 200 });
   } catch (error) {}
   return NextResponse.json(body, { status: 201 });
 }

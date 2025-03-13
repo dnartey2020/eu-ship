@@ -1,40 +1,37 @@
-// lib/db.ts
 import { Sequelize } from "sequelize";
 import dotenv from "dotenv";
+
 dotenv.config();
 
 if (!process.env.DATABASE_URL) {
-  throw new Error("DATABASE_URL environment variable is not defined");
+  throw new Error("DATABASE_URL is not defined in .env file");
 }
 
-// Declare a global variable to avoid multiple instances during hot reloads
-declare global {
-  // eslint-disable-next-line no-var
-  var sequelize: Sequelize | undefined;
-}
+const sequelize = new Sequelize(process.env.DATABASE_URL, {
+  dialect: "postgres", // Change to 'mysql' for MySQL
+  logging: process.env.NODE_ENV === "development" ? console.log : false,
+  dialectOptions: {
+    ssl: {
+      require: true,
+      rejectUnauthorized: false, // Required for some database providers
+    },
+  },
+  pool: {
+    max: 5,
+    min: 0,
+    acquire: 30000,
+    idle: 10000,
+  },
+});
 
-const sequelize =
-  globalThis.sequelize ??
-  new Sequelize(process.env.DATABASE_URL, {
-    dialect: "postgres",
-    protocol: "postgres",
-    // In production, enforce SSL; in development, this can be omitted
-    dialectOptions:
-      process.env.NODE_ENV === "production"
-        ? {
-            ssl: {
-              require: true,
-              rejectUnauthorized: false,
-            },
-          }
-        : undefined,
-    // Enable logging in development for debugging; disable in production
-    logging: process.env.NODE_ENV === "development" ? console.log : false,
-  });
-
-// In non-production environments, cache the instance on globalThis
-if (process.env.NODE_ENV !== "production") {
-  globalThis.sequelize = sequelize;
-}
+// Test connection
+(async () => {
+  try {
+    await sequelize.authenticate();
+    console.log("Database connection established successfully.");
+  } catch (error) {
+    console.error("Database connection error:", error);
+  }
+})();
 
 export default sequelize;
