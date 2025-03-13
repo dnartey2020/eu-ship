@@ -98,14 +98,7 @@ const Footer = () => {
                         Shipment Tracking
                       </a>
                     </li>
-                    <li>
-                      <a
-                        href="#"
-                        className="mb-3 inline-block hover:text-primary"
-                      >
-                        Integrations
-                      </a>
-                    </li>
+
                     <li>
                       <a
                         href="#"
@@ -142,28 +135,13 @@ const Footer = () => {
                   <ul>
                     <li>
                       <a
-                        href="#"
-                        className="mb-3 inline-block hover:text-primary"
-                      >
-                        Company
-                      </a>
-                    </li>
-                    <li>
-                      <a
                         href="/help-center"
                         className="mb-3 inline-block hover:text-primary"
                       >
                         Help Center
                       </a>
                     </li>
-                    <li>
-                      <a
-                        href="#"
-                        className="mb-3 inline-block hover:text-primary"
-                      >
-                        Documentation
-                      </a>
-                    </li>
+
                     <li>
                       <a
                         href="/support"
@@ -299,7 +277,8 @@ const Footer = () => {
               className="animate_top"
             >
               <p>
-                &copy; {new Date().getFullYear()} Solid. All rights reserved
+                &copy; {new Date().getFullYear()} Euroswrift. All rights
+                reserved
               </p>
             </motion.div>
 
