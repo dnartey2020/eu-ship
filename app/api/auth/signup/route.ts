@@ -14,13 +14,6 @@ interface SignUpData {
   picklocation: string;
 }
 
-// GET handler for testing (remove in production)
-export async function GET() {
-  return NextResponse.json({
-    message: "Sign-up endpoint works. Use POST to register.",
-  });
-}
-
 export async function POST(request: Request) {
   try {
     const {
@@ -34,12 +27,12 @@ export async function POST(request: Request) {
       picklocation,
     }: SignUpData = await request.json();
 
-    // Basic validation
+    // Validation: Check all required fields
     if (
       !firstname ||
       !lastname ||
+      !email ||
       !password ||
-      !firstname ||
       !phonenumber ||
       !pickaddress ||
       !pickcity ||
@@ -51,38 +44,44 @@ export async function POST(request: Request) {
       );
     }
 
-    console.log(firstname);
-
-    // Check if user exists
-    const existingUser = await prisma.user.findUnique({ where: { email } });
-    if (existingUser) {
+    // Optional: Validate phone number format
+    const phoneRegex = /^\+?\d{10,15}$/;
+    if (!phoneRegex.test(phonenumber)) {
       return NextResponse.json(
-        { error: "User already exists" },
-        { status: 409 }, // More appropriate status code for conflict
+        { error: "Invalid phone number format" },
+        { status: 400 },
       );
     }
 
-    // Hash the password
+    // Check for existing user
+    const existingUser = await prisma.user.findUnique({ where: { email } });
+    console.log("User exists", existingUser);
+
+    if (existingUser) {
+      return NextResponse.json(
+        { error: "User already exists" },
+        { status: 409 },
+      );
+    }
+
+    // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Create the user record
+    // Create user
     const user = await prisma.user.create({
       data: {
         firstname,
-        email,
         lastname,
+        email,
         phonenumber,
         pickaddress,
         pickcity,
         picklocation,
         password: hashedPassword,
-        // Add if your schema requires these:
-        // emailVerified: new Date(),
-        // role: 'USER' // Add appropriate default role
       },
     });
 
-    // Remove password before sending response
+    // Remove password from response
     const { password: _, ...userWithoutPassword } = user;
 
     return NextResponse.json({ user: userWithoutPassword }, { status: 201 });
