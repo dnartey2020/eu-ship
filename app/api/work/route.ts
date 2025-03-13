@@ -1,3 +1,5 @@
+import { NextResponse } from "next/server";
+
 export const revalidate = 60;
 
 export async function GET() {
@@ -8,5 +10,5 @@ export async function GET() {
 
   const posts = data;
 
-  return Response.json(posts);
+  return NextResponse.json(posts);
 }

@@ -6,7 +6,7 @@ import { User } from "@/models/user-model";
 import sequelize from "@/lib/sequelize";
 import { Op } from "sequelize";
 
-export async function POST(req: Request) {
+export async function POST(req: Request, res: Response) {
   // Validate content type
   const contentType = req.headers.get("content-type");
   if (!contentType?.includes("application/json")) {
