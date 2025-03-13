@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
 export async function POST(request: Request) {
-  return NextResponse.json({ message: "Signup successful" }, { status: 201 });
+  const body = await request.json();
+  return NextResponse.json(body, { status: 201 });
 }
