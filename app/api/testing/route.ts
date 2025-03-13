@@ -1,3 +1,4 @@
+import sequelize from "@/lib/sequelize";
 import { NextResponse } from "next/server";
 
 export async function POST(request: Request) {
@@ -8,6 +9,10 @@ export async function POST(request: Request) {
       { status: 415 },
     );
   }
+
   const body = await request.json();
+  try {
+    await sequelize.authenticate();
+  } catch (error) {}
   return NextResponse.json(body, { status: 201 });
 }
