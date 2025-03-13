@@ -1,6 +1,7 @@
 import Image from "next/image";
 
 import { TrackShipmentBtn } from "../Tracking/track-shipment-btn";
+import { Button } from "../ui/button";
 
 const Hero = () => {
   return (
@@ -66,6 +67,25 @@ const Hero = () => {
                 </div>
               </div>
             </div>
+            <Button
+              onClick={() => {
+                fetch("/api/testing", {
+                  method: "POST",
+                  headers: {
+                    "Content-Type": "application/json",
+                  },
+                  body: JSON.stringify({
+                    email: "test@example.com",
+                    password: "securepassword",
+                  }),
+                })
+                  .then((res) => res.json())
+                  .then((data) => console.log(data))
+                  .catch((err) => console.error(err));
+              }}
+            >
+              click here
+            </Button>
           </div>
         </div>
       </section>
