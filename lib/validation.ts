@@ -1,55 +1,30 @@
 // lib/validation.ts
-import { ShipmentStatus } from "@/models/shipment-model";
 import * as z from "zod";
 
 export const shipmentSchema = z.object({
-  sender: z.object({
-    name: z.string().min(1, "Sender name is required"),
-    address: z.string().min(1, "Sender address is required"),
-    city: z.string().min(1, "Sender city is required"),
-    postalCode: z.string().min(3, "Valid postal code required"),
-    country: z.string().min(2, "Country code required"),
-    phone: z.string().min(5, "Valid phone number required"),
-  }),
-  receiver: z.object({
-    name: z.string().min(1, "Receiver name is required"),
-    address: z.string().min(1, "Receiver address is required"),
-    city: z.string().min(1, "Receiver city is required"),
-    postalCode: z.string().min(3, "Valid postal code required"),
-    country: z.string().min(2, "Country code required"),
-    phone: z.string().min(5, "Valid phone number required"),
-  }),
-  serviceType: z.enum(["STANDARD", "EXPRESS", "INTERNATIONAL"]),
-  specialInstructions: z.string().optional(),
-  status: z
-    .nativeEnum(ShipmentStatus)
-    .optional()
-    .default(ShipmentStatus.PENDING),
-});
-
-export const packageCreateSchema = z.object({
-  weight: z.number().positive("Weight must be greater than zero"),
-  dimensions: z
+  senderName: z.string().nonempty("Sender name is required"),
+  contactPhone: z.string().nonempty("Contact phone is required"),
+  pickupAddress: z.string().nonempty("Pickup address is required"),
+  pickupCity: z.string().nonempty("Pickup city is required"),
+  pickupGeoCoordinate: z.string().nonempty("Pickup geo coordinate is required"),
+  pickupDate: z.coerce.date(),
+  pickupTime: z.string().optional(),
+  receiverName: z.string().nonempty("Receiver name is required"),
+  receiverPhone: z.string().nonempty("Receiver phone is required"),
+  deliveryAddress: z.string().nonempty("Delivery address is required"),
+  deliveryCity: z.string().nonempty("Delivery city is required"),
+  deliveryGeoCoordinate: z
     .string()
-    .regex(
-      /^\d+x\d+x\d+$/,
-      "Dimensions must be in LxWxH format (e.g., 10x20x30)",
-    ),
-  description: z.string().min(1, "Description is required"),
-  quantity: z.number().int().positive("Quantity must be at least 1"),
+    .nonempty("Delivery geo coordinate is required"),
+  estimatedCost: z.number().min(0, "Estimated cost must be non-negative"),
+  packages: z.array(
+    z.object({
+      weight: z.number().min(0.1, "Weight must be positive"),
+      length: z.number().min(0.1, "length must be positive"),
+      description: z.string().nonempty("Description are required"),
+      quantity: z.number().min(1, "Quantity must be positive").int(),
+      width: z.number().min(1, "Width must be positive").int(),
+      height: z.number().min(1, "Height must be positive").int(),
+    }),
+  ),
 });
-
-export const packageCreateArraySchema = z.array(packageCreateSchema);
-
-export const shipmentWithPackagesSchema = shipmentSchema.extend({
-  packages: z
-    .array(packageCreateSchema)
-    .min(1, "At least one package is required"),
-});
-
-const ServiceTypeEnum = z.enum(["STANDARD", "EXPRESS", "INTERNATIONAL"]);
-export type ServiceType = z.infer<typeof ServiceTypeEnum>;
-
-export type shipmentWithPackagesSchemaData = z.infer<
-  typeof shipmentWithPackagesSchema
->;

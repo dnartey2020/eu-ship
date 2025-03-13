@@ -3,10 +3,7 @@
 import React, { useState } from "react";
 import { useForm, SubmitHandler } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import {
-  shipmentWithPackagesSchema,
-  shipmentWithPackagesSchemaData,
-} from "@/lib/validation";
+import { shipmentSchema } from "@/lib/validation";
 import { z } from "zod";
 import { Separator } from "@/components/ui/separator";
 import { Input } from "@/components/ui/input";
@@ -14,17 +11,24 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
-import { Loader2, PlusCircle } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { useCreateShipment } from "@/hooks/use-create-shipment";
 import { useRouter } from "next/navigation";
+
 import { ItemCard } from "./item-card";
 import { calculateShippingCost } from "@/lib/cost-of-package";
 
+// Infer the form values type from the shipmentSchema.
+type ShipmentFormData = z.infer<typeof shipmentSchema>;
+
+// Local type for package sub-form values.
 type PackageData = {
   weight: number;
-  dimensions: string;
-  description: string;
+  length: number;
+  width: number;
+  height: number;
+  description: "";
   quantity: number;
 };
 
@@ -36,93 +40,105 @@ export const CreateShipmentForm = () => {
     register,
     handleSubmit,
     formState: { errors },
-    setValue,
-  } = useForm<shipmentWithPackagesSchemaData>({
-    // resolver: zodResolver(shipmentWithPackagesSchema),
+  } = useForm<ShipmentFormData>({
+    resolver: zodResolver(shipmentSchema),
+    defaultValues: {
+      senderName: "",
+      contactPhone: "",
+      pickupAddress: "",
+      pickupCity: "",
+      pickupGeoCoordinate: "",
+      pickupDate: undefined,
+      pickupTime: "",
+      receiverName: "",
+      receiverPhone: "",
+      deliveryAddress: "",
+      deliveryCity: "",
+      deliveryGeoCoordinate: "",
+      estimatedCost: 0,
+      packages: [],
+    },
   });
 
+  // Local state for package sub-form.
   const [pkg, setPkg] = useState<PackageData>({
     weight: 0,
-    dimensions: "",
+    length: 0,
+    width: 0,
+    height: 0,
     description: "",
     quantity: 1,
   });
 
+  // List of packages added.
   const [packagesList, setPackagesList] = useState<PackageData[]>([]);
 
-  const handlePackageChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
-  ) => {
+  // Handle changes in package input fields.
+  const handlePackageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setPkg((prev) => {
-      if (name === "dimensions") {
-        return { ...prev, [name]: value };
+      // List of fields that should be numeric
+      const numericFields = ["weight", "quantity", "length", "height", "width"];
+      if (numericFields.includes(name)) {
+        // Allow empty string or a valid number (integer or decimal)
+        const numericRegex = /^\d*\.?\d*$/;
+        if (value === "" || numericRegex.test(value)) {
+          return {
+            ...prev,
+            [name]: value === "" ? "" : Number(value),
+          };
+        }
+        // If input doesn't match the numeric pattern, keep the previous value
+        return prev;
       }
-      return {
-        ...prev,
-        [name]: name === "description" ? value : Number(value),
-      };
+      return { ...prev, [name]: value };
     });
   };
-
-  const validateDimensions = (dimensions: string) => {
-    return /^\d+x\d+x\d+$/.test(dimensions);
-  };
-
+  // Add package to the list.
   const addPackage = () => {
-    // Validate dimensions format
-    const dimensionParts = pkg.dimensions.split("x");
     if (
-      dimensionParts.length !== 3 ||
-      dimensionParts.some((part) => isNaN(Number(part)) || Number(part) <= 0)
+      pkg.weight <= 0 ||
+      !pkg.description.trim() ||
+      pkg.quantity <= 0 ||
+      pkg.width <= 0 ||
+      pkg.height <= 0 ||
+      pkg.length <= 0
     ) {
-      toast.error("Invalid dimensions format. Use LxWxH (e.g., 10x20x30)");
+      alert(
+        "Please provide valid package weight, width, height, description, and quantity.",
+      );
       return;
     }
-
-    if (pkg.weight <= 0 || pkg.quantity <= 0 || !pkg.description.trim()) {
-      toast.error("Please fill all required package fields");
-      return;
-    }
-
-    const newPackage = {
-      ...pkg,
-      dimensions: pkg.dimensions, // Already validated format
-    };
-
-    setPackagesList((prev) => [...prev, newPackage]);
-    setValue("packages", [...packagesList, newPackage]);
-
+    setPackagesList((prev) => [...prev, pkg]);
     setPkg({
       weight: 0,
-      dimensions: "",
+      height: 0,
       description: "",
       quantity: 1,
+      length: 0,
+      width: 0,
     });
   };
 
   const removePackage = (index: number) => {
-    const updatedPackages = packagesList.filter((_, i) => i !== index);
-    setPackagesList(updatedPackages);
-    setValue("packages", updatedPackages);
+    setPackagesList((prev) => prev.filter((_, i) => i !== index));
   };
 
-  const handleFormSubmit: SubmitHandler<shipmentWithPackagesSchemaData> = (
-    data,
-  ) => {
-    if (data.packages.length === 0) {
+  // Final form submit handler.
+  const handleFormSubmit: SubmitHandler<ShipmentFormData> = (data) => {
+    if (packagesList.length === 0) {
       toast.warning("Please add at least one package.");
       return;
     }
+    data.packages = packagesList;
 
     mutate(data, {
       onSuccess: () => {
         toast.success("Shipment created successfully!");
         router.push("/shipping-history");
       },
-      onError: (err) => {
-        toast.error(err.message || "Failed to create shipment");
-        console.table(err.message);
+      onError: (err: any) => {
+        toast.error("Error: " + err.message);
       },
     });
   };
@@ -136,227 +152,240 @@ export const CreateShipmentForm = () => {
       <div className="grid gap-6">
         <div className="flex flex-col gap-2">
           <p className="text-lg font-semibold">Sender Information</p>
-          <Separator />
-        </div>
-
-        <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
-          <div className="grid gap-2">
-            <Label htmlFor="sender.name">Sender Name</Label>
-            <Input
-              id="sender.name"
-              {...register("sender.name")}
-              placeholder="Sender's full name"
-            />
-            {errors.sender?.name && (
-              <p className="text-xs text-red-500">
-                {errors.sender.name.message}
-              </p>
-            )}
-          </div>
-
-          <div className="grid gap-2">
-            <Label htmlFor="sender.address">Sender Address</Label>
-            <Input
-              id="sender.address"
-              {...register("sender.address")}
-              placeholder="Street address"
-            />
-            {errors.sender?.address && (
-              <p className="text-xs text-red-500">
-                {errors.sender.address.message}
-              </p>
-            )}
-          </div>
-
-          <div className="grid gap-2">
-            <Label htmlFor="sender.city">Sender City</Label>
-            <Input
-              id="sender.city"
-              {...register("sender.city")}
-              placeholder="City"
-            />
-            {errors.sender?.city && (
-              <p className="text-xs text-red-500">
-                {errors.sender.city.message}
-              </p>
-            )}
-          </div>
-
-          <div className="grid gap-2">
-            <Label htmlFor="sender.postalCode">Postal Code</Label>
-            <Input
-              id="sender.postalCode"
-              {...register("sender.postalCode")}
-              placeholder="Postal code"
-            />
-            {errors.sender?.postalCode && (
-              <p className="text-xs text-red-500">
-                {errors.sender.postalCode.message}
-              </p>
-            )}
-          </div>
-
-          <div className="grid gap-2">
-            <Label htmlFor="sender.country">Country</Label>
-            <Input
-              id="sender.country"
-              {...register("sender.country")}
-              placeholder="Country"
-            />
-            {errors.sender?.country && (
-              <p className="text-xs text-red-500">
-                {errors.sender.country.message}
-              </p>
-            )}
-          </div>
-
-          <div className="grid gap-2">
-            <Label htmlFor="sender.phone">Phone</Label>
-            <Input
-              id="sender.phone"
-              {...register("sender.phone")}
-              placeholder="Phone number"
-            />
-            {errors.sender?.phone && (
-              <p className="text-xs text-red-500">
-                {errors.sender.phone.message}
-              </p>
-            )}
+          <div className="relative flex items-center">
+            <div className="absolute h-1 w-50 bg-black dark:bg-primaryho" />
+            <Separator className="dark:bg-white" />
           </div>
         </div>
-      </div>
-
-      <div className="grid gap-6">
-        <div className="flex flex-col gap-2">
-          <p className="text-lg font-semibold">Receiver Information</p>
-          <Separator />
-        </div>
-
-        <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
-          <div className="grid gap-2">
-            <Label htmlFor="receiver.name">Receiver Name</Label>
-            <Input
-              id="receiver.name"
-              {...register("receiver.name")}
-              placeholder="Receiver's full name"
-            />
-            {errors.receiver?.name && (
-              <p className="text-xs text-red-500">
-                {errors.receiver.name.message}
-              </p>
-            )}
-          </div>
-
-          <div className="grid gap-2">
-            <Label htmlFor="receiver.address">Receiver Address</Label>
-            <Input
-              id="receiver.address"
-              {...register("receiver.address")}
-              placeholder="Street address"
-            />
-            {errors.receiver?.address && (
-              <p className="text-xs text-red-500">
-                {errors.receiver.address.message}
-              </p>
-            )}
-          </div>
-
-          <div className="grid gap-2">
-            <Label htmlFor="receiver.city">Receiver City</Label>
-            <Input
-              id="receiver.city"
-              {...register("receiver.city")}
-              placeholder="City"
-            />
-            {errors.receiver?.city && (
-              <p className="text-xs text-red-500">
-                {errors.receiver.city.message}
-              </p>
-            )}
-          </div>
-
-          <div className="grid gap-2">
-            <Label htmlFor="receiver.postalCode">Postal Code</Label>
-            <Input
-              id="receiver.postalCode"
-              {...register("receiver.postalCode")}
-              placeholder="Postal code"
-            />
-            {errors.receiver?.postalCode && (
-              <p className="text-xs text-red-500">
-                {errors.receiver.postalCode.message}
-              </p>
-            )}
-          </div>
-
-          <div className="grid gap-2">
-            <Label htmlFor="receiver.country">Country</Label>
-            <Input
-              id="receiver.country"
-              {...register("receiver.country")}
-              placeholder="Country"
-            />
-            {errors.receiver?.country && (
-              <p className="text-xs text-red-500">
-                {errors.receiver.country.message}
-              </p>
-            )}
-          </div>
-
-          <div className="grid gap-2">
-            <Label htmlFor="receiver.phone">Phone</Label>
-            <Input
-              id="receiver.phone"
-              {...register("receiver.phone")}
-              placeholder="Phone number"
-            />
-            {errors.receiver?.phone && (
-              <p className="text-xs text-red-500">
-                {errors.receiver.phone.message}
-              </p>
-            )}
-          </div>
-        </div>
-      </div>
-      {/* Shipping Details */}
-      <div className="grid gap-6">
-        <div className="flex flex-col gap-2">
-          <p className="text-lg font-semibold">Shipping Details</p>
-          <Separator />
-        </div>
-
         <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
           <div className="grid gap-2">
-            <Label htmlFor="serviceType">Service Type</Label>
-            <select
-              id="serviceType"
-              {...register("serviceType")}
-              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              <option value="STANDARD">Standard (3-5 business days)</option>
-              <option value="EXPRESS">Express (1-2 business days)</option>
-              <option value="INTERNATIONAL">
-                International (5-10 business days)
-              </option>
-            </select>
-            {errors.serviceType && (
+            <Label htmlFor="senderName">Sender Name</Label>
+            <Input
+              id="senderName"
+              type="text"
+              placeholder="Enter sender name"
+              {...register("senderName")}
+              className="rounded-sm"
+            />
+            {errors.senderName && (
               <p className="text-xs text-red-500">
-                {errors.serviceType.message}
+                {errors.senderName.message}
               </p>
             )}
           </div>
-
           <div className="grid gap-2">
-            <Label htmlFor="specialInstructions">Special Instructions</Label>
-            <Textarea
-              id="specialInstructions"
-              {...register("specialInstructions")}
-              placeholder="Fragile items, temperature requirements, etc."
-              className="min-h-[100px]"
+            <Label htmlFor="contactPhone">Contact Phone</Label>
+            <Input
+              id="contactPhone"
+              type="text"
+              placeholder="Enter contact phone"
+              {...register("contactPhone")}
+              className="rounded-sm"
             />
-            {errors.specialInstructions && (
+            {errors.contactPhone && (
               <p className="text-xs text-red-500">
-                {errors.specialInstructions.message}
+                {errors.contactPhone.message}
+              </p>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Pickup Information */}
+      <div className="grid gap-6">
+        <div className="flex flex-col gap-2">
+          <p className="text-lg font-semibold">Pickup Information</p>
+          <div className="relative flex items-center">
+            <div className="absolute h-1 w-50 bg-black dark:bg-primaryho" />
+            <Separator className="dark:bg-white" />
+          </div>
+        </div>
+        <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
+          <div className="grid gap-2">
+            <Label htmlFor="pickupDate">Pickup Date</Label>
+            <Input
+              id="pickupDate"
+              type="date"
+              placeholder="Enter pickup date"
+              {...register("pickupDate")}
+              className="rounded-sm"
+            />
+            {errors.pickupDate && (
+              <p className="text-xs text-red-500">
+                {errors.pickupDate.message}
+              </p>
+            )}
+          </div>
+          <div className="grid gap-2">
+            <Label htmlFor="pickupTime">Pickup Time</Label>
+            <Input
+              id="pickupTime"
+              type="time"
+              placeholder="Enter pickup time"
+              {...register("pickupTime")}
+              className="rounded-sm"
+            />
+            {errors.pickupTime && (
+              <p className="text-xs text-red-500">
+                {errors.pickupTime.message}
+              </p>
+            )}
+          </div>
+        </div>
+        <div>
+          <Button type="button" className="rounded-sm">
+            Pick Location Here
+          </Button>
+        </div>
+        <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
+          <div className="grid gap-2">
+            <Label htmlFor="pickupAddress">Pickup Address</Label>
+            <Input
+              id="pickupAddress"
+              type="text"
+              placeholder="Enter pickup address"
+              {...register("pickupAddress")}
+              className="rounded-sm"
+            />
+            {errors.pickupAddress && (
+              <p className="text-xs text-red-500">
+                {errors.pickupAddress.message}
+              </p>
+            )}
+          </div>
+          <div className="grid gap-2">
+            <Label htmlFor="pickupCity">Pickup City</Label>
+            <Input
+              id="pickupCity"
+              type="text"
+              placeholder="Enter pickup city"
+              {...register("pickupCity")}
+              className="rounded-sm"
+            />
+            {errors.pickupCity && (
+              <p className="text-xs text-red-500">
+                {errors.pickupCity.message}
+              </p>
+            )}
+          </div>
+        </div>
+        <div className="grid gap-2">
+          <Label htmlFor="pickupGeoCoordinate">Pickup Geo Coordinate</Label>
+          <Input
+            id="pickupGeoCoordinate"
+            type="text"
+            placeholder="e.g., 34.0522,-118.2437"
+            {...register("pickupGeoCoordinate")}
+            className="rounded-sm"
+          />
+          {errors.pickupGeoCoordinate && (
+            <p className="text-xs text-red-500">
+              {errors.pickupGeoCoordinate.message}
+            </p>
+          )}
+        </div>
+      </div>
+
+      {/* Receiver Data */}
+      <div className="grid gap-6">
+        <div className="flex flex-col gap-2">
+          <p className="text-lg font-semibold">Receiver Data</p>
+          <div className="relative flex items-center">
+            <div className="absolute h-1 w-50 bg-black dark:bg-primaryho" />
+            <Separator className="dark:bg-white" />
+          </div>
+        </div>
+        <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
+          <div className="grid gap-2">
+            <Label htmlFor="receiverName">Receiver Name</Label>
+            <Input
+              id="receiverName"
+              type="text"
+              placeholder="Enter receiver name"
+              {...register("receiverName")}
+              className="rounded-sm"
+            />
+            {errors.receiverName && (
+              <p className="text-xs text-red-500">
+                {errors.receiverName.message}
+              </p>
+            )}
+          </div>
+          <div className="grid gap-2">
+            <Label htmlFor="receiverPhone">Receiver Phone</Label>
+            <Input
+              id="receiverPhone"
+              type="text"
+              placeholder="Enter receiver phone"
+              {...register("receiverPhone")}
+              className="rounded-sm"
+            />
+            {errors.receiverPhone && (
+              <p className="text-xs text-red-500">
+                {errors.receiverPhone.message}
+              </p>
+            )}
+          </div>
+        </div>
+        <div className="grid gap-6">
+          <div className="flex flex-col gap-2">
+            <p className="text-lg font-semibold">Drop-Off Information</p>
+            <div className="relative flex items-center">
+              <div className="absolute h-1 w-50 bg-black dark:bg-primaryho" />
+              <Separator className="dark:bg-white" />
+            </div>
+          </div>
+          <div>
+            <Button type="button" className="rounded-sm">
+              Pick Location Here
+            </Button>
+          </div>
+          <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
+            <div className="grid gap-2">
+              <Label htmlFor="deliveryAddress">Delivery Address</Label>
+              <Input
+                id="deliveryAddress"
+                type="text"
+                placeholder="Enter delivery address"
+                {...register("deliveryAddress")}
+                className="rounded-sm"
+              />
+              {errors.deliveryAddress && (
+                <p className="text-xs text-red-500">
+                  {errors.deliveryAddress.message}
+                </p>
+              )}
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="deliveryCity">Delivery City</Label>
+              <Input
+                id="deliveryCity"
+                type="text"
+                placeholder="Enter delivery city"
+                {...register("deliveryCity")}
+                className="rounded-sm"
+              />
+              {errors.deliveryCity && (
+                <p className="text-xs text-red-500">
+                  {errors.deliveryCity.message}
+                </p>
+              )}
+            </div>
+          </div>
+          <div>
+            <Label htmlFor="deliveryGeoCoordinate">
+              Delivery Geo Coordinate
+            </Label>
+            <Input
+              id="deliveryGeoCoordinate"
+              type="text"
+              placeholder="e.g., 34.0522,-118.2437"
+              {...register("deliveryGeoCoordinate")}
+              className="rounded-sm"
+            />
+            {errors.deliveryGeoCoordinate && (
+              <p className="text-xs text-red-500">
+                {errors.deliveryGeoCoordinate.message}
               </p>
             )}
           </div>
@@ -366,110 +395,145 @@ export const CreateShipmentForm = () => {
       {/* Package Details */}
       <div className="grid gap-6">
         <div className="flex flex-col gap-2">
-          <p className="text-lg font-semibold">Packages</p>
-          <Separator />
+          <p className="text-lg font-semibold">Item(S) to be Shipped</p>
+          <div className="relative flex items-center">
+            <div className="absolute h-1 w-50 bg-black dark:bg-primaryho" />
+            <Separator className="dark:bg-white" />
+          </div>
         </div>
-
         <div className="grid gap-6">
-          <div className="grid grid-cols-1 gap-5 lg:grid-cols-4">
+          <div className="grid grid-cols-2 gap-5 lg:grid-cols-6">
             <div className="grid gap-2">
-              <Label htmlFor="weight">Weight (kg)</Label>
+              <Label htmlFor="pkgWeight">Weight (kg)</Label>
               <Input
-                type="number"
+                id="pkgWeight"
+                type="text"
                 name="weight"
                 value={pkg.weight}
                 onChange={handlePackageChange}
-                min="0.1"
-                step="0.1"
                 placeholder="Weight"
+                className="rounded-sm"
               />
-              {errors.packages?.[0]?.weight && (
-                <p className="text-xs text-red-500">Weight is required</p>
-              )}
             </div>
-
             <div className="grid gap-2">
-              <Label htmlFor="dimensions">Dimensions (L×W×H cm)</Label>
+              <Label htmlFor="pkgLength">Length (L)</Label>
               <Input
-                name="dimensions"
-                value={pkg.dimensions}
+                id="pkgLength"
+                type="text"
+                step="1"
+                name="length"
+                value={pkg.length}
                 onChange={handlePackageChange}
-                placeholder="10×20×30"
+                placeholder="Length (cm)"
+                className="rounded-sm"
               />
-              {errors.packages?.[0]?.dimensions && (
-                <p className="text-xs text-red-500">
-                  Valid dimensions required
-                </p>
-              )}
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="pkgHeight">Height (H)</Label>
+              <Input
+                id="pkgHeight"
+                type="text"
+                name="height"
+                value={pkg.height}
+                onChange={handlePackageChange}
+                placeholder="Height (cm)"
+                className="rounded-sm"
+              />
             </div>
 
             <div className="grid gap-2">
-              <Label htmlFor="quantity">Quantity</Label>
+              <Label htmlFor="pkgWidth">Width</Label>
               <Input
-                type="number"
+                id="pkgWidth"
+                type="text"
+                name="width"
+                value={pkg.width}
+                onChange={handlePackageChange}
+                placeholder="Width (cm)"
+                className="rounded-sm"
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="pkgQuantity">Quantity</Label>
+              <Input
+                id="pkgQuantity"
+                type="text"
                 name="quantity"
                 value={pkg.quantity}
                 onChange={handlePackageChange}
-                min="1"
                 placeholder="Quantity"
+                className="rounded-sm"
               />
-              {errors.packages?.[0]?.quantity && (
-                <p className="text-xs text-red-500">Valid quantity required</p>
-              )}
-            </div>
-
-            <div className="grid gap-2">
-              <Label htmlFor="description">Description</Label>
-              <Textarea
-                name="description"
-                value={pkg.description}
-                onChange={handlePackageChange}
-                placeholder="Package description"
-              />
-              {errors.packages?.[0]?.description && (
-                <p className="text-xs text-red-500">Description is required</p>
-              )}
             </div>
           </div>
-
-          <Button
-            type="button"
-            onClick={addPackage}
-            variant="outline"
-            className="w-fit"
-          >
-            <PlusCircle className="mr-2 h-4 w-4" />
-            Add Package
-          </Button>
-
+          <div className="grid gap-2">
+            <Label htmlFor="pkgDescription">Description</Label>
+            <Textarea
+              id="pkgDescription"
+              name="description"
+              value={pkg.description}
+              onChange={(e) =>
+                setPkg((prev) => ({
+                  ...prev,
+                  description: e.target.value as any,
+                }))
+              }
+              placeholder="Description"
+              className="rounded-sm"
+            />
+          </div>
+          <div className="text-left">
+            <Button
+              type="button"
+              onClick={addPackage}
+              variant="default"
+              className="rounded-sm"
+            >
+              Add Package
+            </Button>
+          </div>
+        </div>
+        <div className="flex flex-col gap-2">
+          <p className="text-lg font-semibold">List of Items/Packages</p>
+          <div className="relative flex items-center">
+            <div className="absolute h-1 w-50 bg-black dark:bg-primaryho" />
+            <Separator className="dark:bg-white" />
+          </div>
           {packagesList.length > 0 && (
-            <div className="flex flex-col gap-4">
-              <p className="text-lg font-semibold">Added Packages</p>
-              <div className="grid grid-cols-1 gap-4">
-                {packagesList.map((pkg, index) => {
-                  const dimension = calculateShippingCost(
-                    pkg.weight,
-                    pkg.dimensions,
-                  );
-                  return (
+            <ul className="">
+              {packagesList.map((pkg, index) => {
+                const dimension = calculateShippingCost([{ ...pkg }]);
+                return (
+                  <li key={index} className="flex items-center">
                     <ItemCard
-                      key={index}
                       description={pkg.description}
                       item={index + 1}
                       dimension={dimension}
                       quantity={pkg.quantity}
                       handleRemove={() => removePackage(index)}
                     />
-                  );
-                })}
-              </div>
-            </div>
+                  </li>
+                );
+              })}
+            </ul>
           )}
         </div>
       </div>
-      <Button type="submit" disabled={isPending} className="mt-8 w-full">
-        {isPending ? <Loader2 className="animate-spin" /> : "Create Shipment"}
-      </Button>
+
+      <div className="mt-8 w-full">
+        <Button
+          type="submit"
+          size="lg"
+          variant="default"
+          className="w-full rounded-sm"
+        >
+          {isPending ? (
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+          ) : (
+            "Create Shipment"
+          )}
+        </Button>
+      </div>
     </form>
   );
 };

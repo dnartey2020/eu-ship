@@ -9,7 +9,12 @@ import { z } from "zod";
 import { Loader2 } from "lucide-react";
 
 const formSchema = z.object({
-  trackingNumber: z.string(),
+  trackingNumber: z
+    .string()
+    .regex(
+      /^0\d*$/,
+      "Tracking number must start with zero and contain only numbers",
+    ),
 });
 export const TrackShipmentBtn = () => {
   const router = useRouter();
@@ -32,9 +37,10 @@ export const TrackShipmentBtn = () => {
       <div className="flex flex-col gap-4">
         <Label className="font-semibold">Tracking Number</Label>
         <div>
-          <div className="flex items-center  rounded-md border-2 px-2 dark:border-white dark:bg-black">
+          <div className="flex items-center  rounded-md border-2 px-2">
+            <span className="border-r-2 px-2 text-[#8BD888]">EUS</span>
             <input
-              className="flex flex-1 px-3 py-3 text-sm outline-none ring-0  dark:bg-black"
+              className="flex flex-1 px-3 py-3 text-sm outline-none ring-0"
               placeholder="Enter Tracking Number"
               {...register("trackingNumber")}
             />
@@ -45,13 +51,9 @@ export const TrackShipmentBtn = () => {
             </span>
           )}
         </div>
-        <Button
-          size={"lg"}
-          type="submit"
-          className="bg-blue-500 text-white dark:hover:text-black"
-        >
+        <Button size={"lg"} type="submit">
           {isSubmitting ? (
-            <Loader2 className="mr-2 h-4 w-4 animate-spin " />
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
           ) : (
             "Track Shipment"
           )}

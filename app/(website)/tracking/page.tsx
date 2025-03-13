@@ -31,7 +31,7 @@ const Page = () => {
   return (
     <div className=" flex min-h-screen items-center px-10">
       <div className="grid grid-cols-1 place-content-center gap-10 lg:grid-cols-3">
-        <div className="col-span-1 grid gap-16 rounded-md bg-[#2effbd] p-5 text-black lg:p-10">
+        <div className="col-span-1 grid gap-16 rounded-md bg-[#296CFF] p-5 text-white lg:p-10">
           <div className="grid gap-5">
             <p className="text-2xl font-semibold lg:text-2xl">
               Don't Have a Tracking Number?
@@ -45,7 +45,7 @@ const Page = () => {
           <Button
             variant={"outline"}
             size={"lg"}
-            className="border-2 border-transparent bg-white "
+            className="border-2 bg-transparent"
           >
             Get Started
           </Button>

@@ -33,7 +33,7 @@ const Header = () => {
 
   return (
     <header
-      className={`fixed left-0 top-0 z-99999 w-full py-5 transition-all duration-100   dark:text-white ${
+      className={`fixed left-0 top-0 z-99999 w-full py-5 transition-all duration-100 ${
         stickyMenu ? "bg-white !py-4 shadow transition  dark:bg-black" : ""
       }`}
     >
@@ -65,7 +65,7 @@ const Header = () => {
             <span className="relative block h-5.5 w-5.5 cursor-pointer">
               <span className="absolute right-0 block h-full w-full">
                 <span
-                  className={`delay-[0] relative left-0 top-0 my-1 block h-0.5 rounded-sm bg-black duration-200 ease-in-out dark:bg-white ${
+                  className={`relative left-0 top-0 my-1 block h-0.5 rounded-sm bg-black delay-[0] duration-200 ease-in-out dark:bg-white ${
                     !navigationOpen ? "!w-full delay-300" : "w-0"
                   }`}
                 ></span>
@@ -83,7 +83,7 @@ const Header = () => {
               <span className="du-block absolute right-0 h-full w-full rotate-45">
                 <span
                   className={`absolute left-2.5 top-0 block h-full w-0.5 rounded-sm bg-black delay-300 duration-200 ease-in-out dark:bg-white ${
-                    !navigationOpen ? "delay-[0] !h-0" : "h-full"
+                    !navigationOpen ? "!h-0 delay-[0]" : "h-full"
                   }`}
                 ></span>
                 <span
@@ -157,11 +157,7 @@ const Header = () => {
           <div className="mt-7 flex items-center gap-5 xl:mt-0">
             {!user ? (
               <>
-                <Button
-                  asChild
-                  variant={"default"}
-                  className="bg-blue-500 text-white dark:hover:text-black"
-                >
+                <Button asChild variant={"default"}>
                   <Link
                     href="/auth/signin"
                     // className="flex items-center justify-center rounded-full bg-primary px-7.5 py-2.5 text-regular text-white duration-300 ease-in-out hover:bg-black/95 dark:text-black"
@@ -169,11 +165,7 @@ const Header = () => {
                     Login
                   </Link>
                 </Button>
-                <Button
-                  asChild
-                  variant={"outline"}
-                  className="dark:bg-white dark:text-black"
-                >
+                <Button asChild variant={"outline"}>
                   <Link
                     href="/auth/signup"
                     // className="flex items-center justify-center rounded-full bg-primary px-7.5 py-2.5 text-regular text-white duration-300 ease-in-out hover:bg-black/95 dark:text-black"
@@ -184,10 +176,7 @@ const Header = () => {
               </>
             ) : (
               <>
-                <Button
-                  asChild
-                  className="bg-blue-500 text-white dark:hover:text-black"
-                >
+                <Button asChild>
                   <Link href={"/create-shipment"}>Create Shipment</Link>
                 </Button>
                 <UserAvatar />

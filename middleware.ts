@@ -1,42 +1,134 @@
-import { NextRequest, NextResponse } from "next/server";
+// middleware.ts
+import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
+import { jwtVerify } from "jose";
 
-const allowedOrigins = ["https://acme.com", "https://my-app.org"];
+// In-memory rate limit cache (for demonstration only)
+const rateLimitCache = new Map<
+  string,
+  { count: number; lastRequest: number }
+>();
+const RATE_LIMIT_WINDOW = 60000; // 60 seconds
+const RATE_LIMIT_MAX = 100; // maximum allowed requests per window
 
-const corsOptions = {
-  "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, Authorization",
-};
+export async function middleware(request: NextRequest) {
+  const { pathname } = request.nextUrl;
+  const token = request.cookies.get("token")?.value;
 
-export function middleware(request: NextRequest) {
-  // Check the origin from the request
-  const origin = request.headers.get("origin") ?? "";
-  const isAllowedOrigin = allowedOrigins.includes(origin);
+  // --- Rate limiting for public shipments tracking endpoint ---
+  if (pathname.startsWith("/api/shipments/")) {
+    // Extract client's IP from headers
+    const ip =
+      request.headers.get("x-forwarded-for")?.split(",")[0] ||
+      request.headers.get("x-real-ip") ||
+      "unknown";
 
-  // Handle preflighted requests
-  const isPreflight = request.method === "OPTIONS";
+    const now = Date.now();
+    const rateData = rateLimitCache.get(ip) || { count: 0, lastRequest: now };
 
-  if (isPreflight) {
-    const preflightHeaders = {
-      ...(isAllowedOrigin && { "Access-Control-Allow-Origin": origin }),
-      ...corsOptions,
-    };
-    return NextResponse.json({}, { headers: preflightHeaders });
+    // Reset the counter if the time window has passed
+    if (now - rateData.lastRequest > RATE_LIMIT_WINDOW) {
+      rateData.count = 0;
+      rateData.lastRequest = now;
+    }
+
+    rateData.count += 1;
+    rateLimitCache.set(ip, rateData);
+
+    if (rateData.count > RATE_LIMIT_MAX) {
+      return new NextResponse("Too many requests", { status: 429 });
+    }
   }
 
-  // Handle simple requests
-  const response = NextResponse.next();
+  if (pathname.startsWith("/auth") && token) {
+    try {
+      const decoded = await jwtVerify(
+        token,
+        new TextEncoder().encode(process.env.JWT_SECRET),
+      );
+      if (!decoded) return NextResponse.next();
 
-  if (isAllowedOrigin) {
-    response.headers.set("Access-Control-Allow-Origin", origin);
+      return NextResponse.redirect(new URL("/", request.url));
+    } catch (error) {
+      // If token is invalid, clear it and allow access to auth pages
+      const response = NextResponse.next();
+      response.cookies.delete("token");
+      return response;
+    }
   }
 
-  Object.entries(corsOptions).forEach(([key, value]) => {
-    response.headers.set(key, value);
-  });
+  // -----------------------------------------------------------
 
-  return response;
+  // Allow public routes such as authentication and website content.
+  if (
+    pathname.startsWith("/auth/signin") ||
+    pathname.startsWith("/auth/signup") ||
+    pathname.startsWith("/(website)") ||
+    pathname.startsWith("/api/auth") ||
+    pathname.startsWith("/_next")
+  ) {
+    return NextResponse.next();
+  }
+
+  // Protected routes
+
+  const isProtectedRoutes = [
+    "/account-setting",
+    "/create-shipment", // corrected spelling
+    "/shipping-history",
+    "/api/create-shipment",
+  ];
+
+  const isProtected = isProtectedRoutes.some((route) =>
+    pathname.startsWith(route),
+  );
+
+  if (isProtected) {
+    if (!token) {
+      const url = request.nextUrl.clone();
+      url.pathname = "/auth/signin";
+      return NextResponse.redirect(url);
+    }
+    try {
+      const decoded = await jwtVerify(
+        token,
+        new TextEncoder().encode(process.env.JWT_SECRET),
+      );
+
+      if (!decoded) {
+        const url = request.nextUrl.clone();
+        url.pathname = "/auth/signin";
+        return NextResponse.redirect(url);
+      }
+
+      // // Add user info to headers
+      // const requestHeaders = new Headers(request.headers);
+      // requestHeaders.set("x-user-id", decoded.id);
+
+      return NextResponse.next();
+    } catch (error) {
+      console.error("JWT verification error:", error);
+      const url = request.nextUrl.clone();
+      url.pathname = "/auth/signin";
+      return NextResponse.redirect(url);
+    }
+  }
+  return NextResponse.next();
 }
 
 export const config = {
-  matcher: "/api/:path*",
+  matcher: [
+    "/api/shipments/:path*",
+    "/account-setting",
+    "/account-setting/:path*",
+    "/shipping-history",
+    "/shipping-history/:path*",
+    "/auth",
+    "/auth/:path*",
+    "/api/create-shipment",
+    "/api/create-shipment/:path*",
+    "/create-shipment",
+    "/create-shipment/:path*",
+  ],
+  runtime: "nodejs", // Force Node.js runtime
 };

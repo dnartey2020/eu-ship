@@ -3,10 +3,6 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { RateLimiterMemory } from "rate-limiter-flexible";
-import { Shipment } from "@/models/shipment-model";
-import { Package } from "@/models/package-model";
-import { Invoice } from "@/models/invoice-model";
-import sequelize from "@/lib/sequelize";
 
 const rateLimiter = new RateLimiterMemory({
   points: 5,
@@ -17,7 +13,6 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ trackingId: string }> },
 ) {
-  await sequelize.authenticate();
   try {
     const ip =
       request.headers.get("x-forwarded-for")?.split(",")[0] ||
@@ -36,17 +31,10 @@ export async function GET(
     // Correct parameter access
     const { trackingId } = await params;
 
-    const shipment = await Shipment.findOne({
-      where: { trackingNumber: trackingId },
-      include: [
-        {
-          model: Invoice,
-        },
-        { model: Package },
-      ],
+    const shipment = await prisma.shipment.findUnique({
+      where: { trackingNumber: `EUS${trackingId}` },
+      include: { packages: true, invoice: true },
     });
-
-    console.log(shipment);
 
     if (!shipment) {
       return NextResponse.json(

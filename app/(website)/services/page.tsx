@@ -5,13 +5,13 @@ function Page() {
     <div className="mt-35 px-10 pb-20">
       <div className="grid grid-cols-1 gap-10 lg:grid-cols-3">
         <div className="col-span-1 grid gap-5">
-          <div className="h-44 rounded-sm bg-[#2effbd] p-8 text-black">
+          <div className="h-44 rounded-sm bg-gray-200 p-8">
             <p className="mb-5 text-xl font-bold">Our Services</p>
             <div className=" bg-white px-4 py-2 text-center shadow-md">
               <p>Express Courier Services</p>
             </div>
           </div>
-          <div className="h-60 rounded-sm bg-[#2effbd] p-8 text-black">
+          <div className="h-60 rounded-sm bg-gray-200 p-8">
             <p className="mb-5 text-xl font-bold">Perfect For: </p>
             <div className="grid gap-2 text-sm">
               <div className=" bg-white px-4 py-2 ">

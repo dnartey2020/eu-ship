@@ -1,13 +1,11 @@
-"use client";
 import Image from "next/image";
 
 import { TrackShipmentBtn } from "../Tracking/track-shipment-btn";
-import { Button } from "../ui/button";
 
 const Hero = () => {
   return (
     <>
-      <section className="overflow-hidden pb-10 pt-35 md:pt-40 xl:pb-25 xl:pt-32">
+      <section className="overflow-hidden pb-10 pt-35 md:pt-40 xl:pb-25 xl:pt-46">
         <div className="mx-auto max-w-c-1390 px-4 md:px-8 2xl:px-0">
           <div className="flex lg:items-center lg:gap-8 xl:gap-32.5">
             <div className=" md:w-1/2">
@@ -68,25 +66,6 @@ const Hero = () => {
                 </div>
               </div>
             </div>
-            <Button
-              onClick={() => {
-                fetch("/api/testing", {
-                  method: "POST",
-                  headers: {
-                    "Content-Type": "application/json",
-                  },
-                  body: JSON.stringify({
-                    email: "test@example.com",
-                    password: "securepassword",
-                  }),
-                })
-                  .then((res) => res.json())
-                  .then((data) => console.log(data))
-                  .catch((err) => console.error(err));
-              }}
-            >
-              click here
-            </Button>
           </div>
         </div>
       </section>

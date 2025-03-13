@@ -80,11 +80,11 @@ export const columns: ColumnDef<Shipment>[] = [
     ),
   },
   {
-    accessorKey: "receiverAddress",
+    accessorKey: "deliveryAddress",
     header: "Delivery Address",
     cell: ({ row }) => (
       <div className="text-sm capitalize">
-        {row.getValue("receiverAddress")}
+        {row.getValue("deliveryAddress")}
       </div>
     ),
   },
@@ -94,9 +94,7 @@ export const columns: ColumnDef<Shipment>[] = [
     cell: ({ row }) => {
       return (
         <div
-          className={`rounded-full px-3 py-1 text-center text-xs ${statusType({
-            status: row.getValue("status"),
-          })}`}
+          className={`rounded-full px-3 py-1 text-center text-xs ${statusType({ status: row.getValue("status") })}`}
         >
           {row.getValue("status")}
         </div>

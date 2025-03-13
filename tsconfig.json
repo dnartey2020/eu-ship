@@ -31,12 +31,7 @@
     "**/*.ts",
     "**/*.tsx",
     ".next/types/**/*.ts",
-    "server.js",
-    "synDb.ts"
+    "server.js"
   ],
-  "exclude": ["node_modules"],
-  "ts-node": {
-    "transpileOnly": true,
-    "files": true
-  }
+  "exclude": ["node_modules"]
 }

@@ -16,8 +16,8 @@ const Feature = () => {
           {/* <!-- Section Title Start --> */}
           <SectionHeader
             headerInfo={{
-              title: "EUROSWIFT FEATURES",
-              subtitle: "Core Features of Euroswift",
+              title: "SOLID FEATURES",
+              subtitle: "Core Features of Solid",
               description: `Streamlined solutions for secure, real-time shipping
 Empowering your logistics with intuitive, integrated features`,
             }}

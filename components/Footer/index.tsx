@@ -98,10 +98,17 @@ const Footer = () => {
                         Shipment Tracking
                       </a>
                     </li>
-
                     <li>
                       <a
-                        href="/contact"
+                        href="#"
+                        className="mb-3 inline-block hover:text-primary"
+                      >
+                        Integrations
+                      </a>
+                    </li>
+                    <li>
+                      <a
+                        href="#"
                         className="mb-3 inline-block hover:text-primary"
                       >
                         Contact
@@ -149,7 +156,14 @@ const Footer = () => {
                         Help Center
                       </a>
                     </li>
-
+                    <li>
+                      <a
+                        href="#"
+                        className="mb-3 inline-block hover:text-primary"
+                      >
+                        Documentation
+                      </a>
+                    </li>
                     <li>
                       <a
                         href="/support"
@@ -285,7 +299,7 @@ const Footer = () => {
               className="animate_top"
             >
               <p>
-                &copy; {new Date().getFullYear()} Euroswift. All rights reserved
+                &copy; {new Date().getFullYear()} Solid. All rights reserved
               </p>
             </motion.div>
 
